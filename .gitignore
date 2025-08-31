@@ -10,3 +10,8 @@ build/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Configuración local
+.env
+.env.local
+.env.*.local
