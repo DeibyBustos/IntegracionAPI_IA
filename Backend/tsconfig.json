@@ -1,0 +1,28 @@
+{
+  "compilerOptions": {
+    // ⬇️ Salidas y entradas
+    "rootDir": "src",
+    "outDir": "dist",
+
+    // ⬇️ Módulos/entorno Node ESM moderno
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Node",
+
+    // ⬇️ Tipos y librerías
+    "lib": ["ES2022"],
+    "types": ["node"],
+
+    // ⬇️ Calidad de vida
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+
+    // ⬇️ Mapas y declaraciones (opcional si publicas lib)
+    "sourceMap": true,
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": ["src"]
+}

@@ -1,0 +1,12 @@
+# Dependencias
+node_modules/
+
+# Build
+dist/
+build/
+
+# IDEs / editores
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
