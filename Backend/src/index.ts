@@ -1,29 +1,34 @@
 import 'dotenv/config';
-import { InferenceClient } from '@huggingface/inference';
+import express from 'express';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import { corsMiddleware } from './config/cors.js';
+import { iaRouter } from './routes/iaRoutes.js';
+import { errorHandler } from './middlewares/errorHandler.js';
+import { ENV } from './config/env.js';
 
-const HF_TOKEN = process.env.HF_TOKEN?.trim();
-const MODEL_ID = process.env.MODEL_ID?.trim();
+const app = express();
 
-if (!HF_TOKEN) throw new Error('Falta HF_TOKEN en .env');
-if (!MODEL_ID) throw new Error('Falta MODEL_ID en .env');
+app.use(helmet());
+app.use(corsMiddleware);
+app.use(express.json({ limit: '1mb' }));
 
-const hf = new InferenceClient(HF_TOKEN);
+// Rate limit básico para proteger tu endpoint
+const limiter = rateLimit({
+  windowMs: 60_000, // 1 min
+  max: 30,          // 30 req/min/ip
+});
+app.use('/api', limiter);
 
-async function main() {
-  const res = await hf.chatCompletion({
-    model: MODEL_ID, // <-- ¡importante!
-    messages: [
-      { role: 'system', content: 'Eres un asistente útil en español.' },
-      { role: 'user', content: 'Explícame la IA en 3 frases.' },
-    ],
-    max_tokens: 300,
-    temperature: 0.3,
-  });
+// Rutas
+app.use('/api', iaRouter);
 
-  console.log('🧠 Respuesta:\n', res.choices?.[0]?.message?.content);
-}
+// Healthcheck
+app.get('/health', (_req, res) => res.json({ ok: true, service: 'hf-backend', model: ENV.MODEL_ID }));
 
-main().catch((e) => {
-  console.error('❌ Error:', e);
-  process.exit(1);
+// Errores
+app.use(errorHandler);
+
+app.listen(ENV.PORT, () => {
+  console.log(`🚀 API lista en http://localhost:${ENV.PORT}`);
 });
