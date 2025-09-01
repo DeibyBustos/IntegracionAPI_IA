@@ -1,0 +1,21 @@
+<div class="chat-wrapper">
+  <h1>Hola, ¿en qué te podemos ayudar?</h1>
+
+  <form class="chat-form" (ngSubmit)="send()">
+    <input
+      type="text"
+      placeholder="Buscar…"
+      [formControl]="messageCtrl"
+    />
+    <button type="submit" [disabled]="messageCtrl.disabled || messageCtrl.invalid">
+      {{ loading() ? 'Enviando…' : 'Buscar' }}
+    </button>
+  </form>
+
+  <div class="result" *ngIf="reply()">
+    <h2>Respuesta</h2>
+    <p>{{ reply() }}</p>
+  </div>
+
+  <p class="error" *ngIf="error()">{{ error() }}</p>
+</div>
