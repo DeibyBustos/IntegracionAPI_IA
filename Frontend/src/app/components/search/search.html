@@ -1,20 +1,50 @@
 <div class="chat-wrapper">
-  <h1>Hola, ¿en qué te podemos ayudar?</h1>
+  <h1>Asistente</h1>
 
+  <!-- Selector de modo -->
+  <div class="modes">
+    <label>
+      <input type="radio" name="mode" [checked]="mode()==='general'" (change)="onMode('general')" />
+      General
+    </label>
+    <label>
+      <input type="radio" name="mode" [checked]="mode()==='doc'" (change)="onMode('doc')" />
+      Sobre documento
+    </label>
+  </div>
+
+  <!-- Upload solo en modo documento -->
+  <div class="upload" *ngIf="mode()==='doc'">
+    <input type="file" (change)="onFile($event)" [disabled]="loading()" />
+    <span *ngIf="docName()">📄 {{ docName() }} (id: {{ docId() }})</span>
+    <p class="hint">Formatos: PDF, DOCX o TXT</p>
+  </div>
+
+  <!-- Form para ambas modalidades -->
   <form class="chat-form" (ngSubmit)="send()">
     <input
       type="text"
-      placeholder="Buscar…"
+      [placeholder]="mode()==='doc' ? 'Pregunta sobre el documento…' : 'Pregunta general…'"
       [formControl]="messageCtrl"
     />
-    <button type="submit" [disabled]="messageCtrl.disabled || messageCtrl.invalid">
-      {{ loading() ? 'Enviando…' : 'Buscar' }}
+    <button
+      type="submit"
+      [disabled]="loading() || messageCtrl.invalid || (mode()==='doc' && !docId())"
+    >
+      {{ loading() ? 'Enviando…' : 'Enviar' }}
     </button>
   </form>
 
+  <!-- Respuesta -->
   <div class="result" *ngIf="reply()">
     <h2>Respuesta</h2>
     <p>{{ reply() }}</p>
+
+    <!-- Contexto usado (solo en modo doc) -->
+    <details *ngIf="context().length">
+      <summary>Ver fragmentos usados</summary>
+      <pre *ngFor="let c of context(); let i = index">[{{ i + 1 }}] {{ c }}</pre>
+    </details>
   </div>
 
   <p class="error" *ngIf="error()">{{ error() }}</p>
