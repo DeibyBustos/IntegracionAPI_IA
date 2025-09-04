@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    // ⬇️ Salidas y entradas
+    // ⬇️ Entradas y salidas
     "rootDir": "src",
     "outDir": "dist",
 
@@ -16,13 +16,17 @@
     // ⬇️ Calidad de vida
     "strict": true,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,  // 👈 útil para librerías CJS
     "skipLibCheck": true,
     "resolveJsonModule": true,
 
-    // ⬇️ Mapas y declaraciones (opcional si publicas lib)
+    // ⬇️ Mapas y declaraciones
     "sourceMap": true,
     "declaration": false,
     "declarationMap": false
   },
-  "include": ["src"]
+  "include": [
+    "src",
+    "src/types/**/*"   // 👈 añade esta línea
+  ]
 }
