@@ -17,7 +17,7 @@ export class ChatService {
   private http = inject(HttpClient);
   private base = 'http://localhost:3000/api';
 
-  // 🔹 Chat normal (lo que ya tenías)
+  
   chat(message: string, opts?: ChatOptions): Observable<ChatResponse> {
     const body = { message, ...opts };
     return this.http.post<ChatResponse>(`${this.base}/chat`, body).pipe(

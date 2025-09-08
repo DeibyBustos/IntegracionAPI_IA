@@ -70,7 +70,6 @@ export function chunkText(text: string, maxLen = CHUNK_SIZE) {
   return out.slice(0, MAX_CHUNKS);
 }
 
-// ----------------------- Embeddings robustos --------------------
 function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 
 async function embedOne(text: string, attempt = 1): Promise<number[]> {
@@ -80,7 +79,7 @@ async function embedOne(text: string, attempt = 1): Promise<number[]> {
     const v = await hf.featureExtraction({
       model: EMB_MODEL,
       inputs: text,
-      provider: 'hf-inference',      // 👈 forzamos provider aquí
+      provider: 'hf-inference',      
       signal: ac.signal as any,
     });
     const arr = Array.isArray(v) ? (v as number[]) : ((v as any)[0] as number[]);
@@ -117,7 +116,7 @@ export async function embed(texts: string[]) {
 
 const cos = (a: number[], b: number[]) => a.reduce((s, x, i) => s + x * (b[i] ?? 0), 0);
 
-// ----------------------- Indexación -----------------------------
+
 export async function indexDoc(id: string, filePath: string, mime: string, name: string) {
   const t0 = Date.now();
   const text = await extractText(filePath, mime);
@@ -135,7 +134,7 @@ export async function indexDoc(id: string, filePath: string, mime: string, name:
   return { name, chunkCount: chunks.length };
 }
 
-// ----------------------- QA con recuperación --------------------
+
 export async function askDoc(
   id: string,
   question: string,
@@ -151,33 +150,68 @@ export async function askDoc(
     temperature = 0.2,
   } = opts ?? {};
 
+  // 1) embedding de la pregunta
   const [qv] = await embed([question]);
 
+  // 2) retrieval: top-K por coseno
   const picks = doc.vectors
     .map((v, i) => ({ i, s: cos(qv, v) }))
     .sort((a, b) => b.s - a.s)
     .slice(0, Math.min(topK, doc.chunks.length))
     .map(p => doc.chunks[p.i].slice(0, CONTEXT_TRIM));
 
+  // 3) contexto + prompts
   const context = picks.map((c, i) => `【${i + 1}】\n${c}`).join('\n\n');
-  const prompt =
-`Responde SOLO con información de los fragmentos; si no está, di que no está.
+
+  const gemmaPrompt =
+`<start_of_turn>system
+${system}
+<end_of_turn>
+<start_of_turn>user
+Usa exclusivamente la información de los fragmentos. Si no está, dilo explícitamente.
+Fragmentos:
 ${context}
 
 Pregunta: ${question}
-Respuesta:`;
+<end_of_turn>
+<start_of_turn>model`;
 
-  const res = await hf.chatCompletion({
-    model: ENV.MODEL_ID,
-    provider: 'hf-inference',          // 👈 forzamos provider también aquí
-    messages: [
-      { role: 'system', content: system },
-      { role: 'user', content: prompt },
-    ],
-    max_tokens,
-    temperature,
+  // 4) Intento 1: chatCompletion (si el provider para Gemma lo soporta)
+  try {
+    const chat = await hf.chatCompletion({
+      model: ENV.MODEL_ID,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: `Usa SOLO estos fragmentos; si la info no está, dilo.\n\n${context}\n\nPregunta: ${question}` },
+      ],
+      max_tokens,
+      temperature,
+    });
+
+    const answer = chat.choices?.[0]?.message?.content?.trim() ?? '';
+    return { answer, contextUsed: picks };
+  } catch (e) {
+    console.warn('[BACK][askDoc] chatCompletion no disponible; uso textGeneration. Motivo:', (e as Error).message);
+  }
+
+  // 5) Fallback: textGeneration 
+  const gen: any = await hf.textGeneration({
+    model: ENV.MODEL_ID, 
+    inputs: gemmaPrompt,
+    parameters: {
+      max_new_tokens: max_tokens,
+      temperature,
+      return_full_text: false,
+    },
   });
 
-  const answer = res.choices?.[0]?.message?.content?.trim() ?? '';
-  return { answer, contextUsed: picks };
-}
+  let answer = '';
+  if (typeof gen === 'string') {
+    answer = gen.trim();
+  } else if (Array.isArray(gen) && gen[0]?.generated_text) {
+    answer = (gen[0].generated_text as string).trim();
+  } else if ((gen as any)?.generated_text) {
+    answer = ((gen as any).generated_text as string).trim();
+  }
+
+  return { answer, contextUsed: picks }}
